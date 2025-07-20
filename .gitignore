@@ -17,6 +17,7 @@ dist-ssr/
 frontend/build/
 
 .env
+*.local
 .env.*
 
 # OS files
