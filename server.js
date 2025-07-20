@@ -24,6 +24,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://twitter-client-three.vercel.app",
   "https://twitter-client-git-main-prakashs-projects-296c4bec.vercel.app/",
+  "twitter-client-5hp0iiz1l-prakashs-projects-296c4bec.vercel.app",
 ];
 
 app.use(
