@@ -16,9 +16,8 @@ dist/
 dist-ssr/
 frontend/build/
 
-# Environment variables
-# .env
-# .env.*        # In case you use .env.production, .env.local, etc.
+.env
+.env.*
 
 # OS files
 .DS_Store
