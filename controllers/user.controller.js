@@ -90,7 +90,6 @@ export const getSuggestedUser = async (req, res) => {
       (item) => !userFollowedBMe.following.includes(item._id)
     );
     const suggestedUser = filterUser.slice(0, 4);
-    console.log(suggestedUser);
     suggestedUser.forEach((item) => (item.password = null));
     res.status(200).json(suggestedUser);
   } catch (error) {

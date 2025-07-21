@@ -23,21 +23,13 @@ const port = process.env.PORT || 3000;
 const allowedOrigins = [
   "http://localhost:5173",
   "https://twitter-client-three.vercel.app",
-  "https://twitter-client-git-main-prakashs-projects-296c4bec.vercel.app",
-  "https://twitter-client-5hp0iiz1l-prakashs-projects-296c4bec.vercel.app",
 ];
-
-
 app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
   })
 );
-
-app.get("/test", (req, res) => {
-  res.send("Server works!");
-});
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "5mb" }));
@@ -48,7 +40,7 @@ app.use("/api/user", userRoute);
 app.use("/api/posts", postRoute);
 app.use("/api/notifications", notificationRoute);
 
-app.get("/", (req, res) => {
+app.get("/", (res) => {
   res.json({ message: "✅ Server is running successfully" });
 });
 
