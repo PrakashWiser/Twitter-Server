@@ -55,7 +55,6 @@ export const sendMessage = async (req, res) => {
 export const getMessageHistory = async (req, res) => {
   try {
     const { recipient } = req.query;
-
     if (!recipient) {
       return res.status(400).json({
         success: false,
@@ -63,7 +62,7 @@ export const getMessageHistory = async (req, res) => {
       });
     }
 
-    const sender = req.user?._id;
+    const sender = req.user?._id; 
     if (!sender) {
       return res.status(401).json({
         success: false,
@@ -98,4 +97,5 @@ export const getMessageHistory = async (req, res) => {
       error: error.message || "Failed to fetch message history",
     });
   }
-};
+}; 
+

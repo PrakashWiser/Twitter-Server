@@ -70,21 +70,52 @@ connectDB().then(() => {
   });
 });
 
+const onlineUsers = new Map();
+
 io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
+  console.log("✅ New client connected:", socket.id);
+
+  socket.on("register", (userId) => {
+    if (!onlineUsers.has(userId)) {
+      onlineUsers.set(userId, new Set());
+    }
+    onlineUsers.get(userId).add(socket.id);
+    console.log("🟢 Registered:", userId, socket.id);
+  });
 
   socket.on("send_message", (data) => {
-    console.log("Message received:", data);
-    const { recipientId, message } = data;
+    const { recipientId, message, senderId } = data || {};
+    if (!recipientId || !message || !senderId) {
+      console.warn("❌ Invalid message payload:", data);
+      return;
+    }
 
-    if (recipientId) {
-      io.to(recipientId).emit("receive_message", data);
+    const recipientSockets = onlineUsers.get(recipientId);
+
+    if (recipientSockets && recipientSockets.size > 0) {
+      for (const sockId of recipientSockets) {
+        io.to(sockId).emit("receive_message", {
+          sender: senderId,
+          message,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      console.log(`📤 Message sent to ${recipientId}`);
     } else {
-      console.error("Recipient ID is missing or invalid.");
+      console.warn(`⚠️ User ${recipientId} is not online`);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    console.log("❌ User disconnected:", socket.id);
+    for (const [userId, socketSet] of onlineUsers.entries()) {
+      if (socketSet.has(socket.id)) {
+        socketSet.delete(socket.id);
+        if (socketSet.size === 0) {
+          onlineUsers.delete(userId);
+        }
+        break;
+      }
+    }
   });
 });
