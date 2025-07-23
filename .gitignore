@@ -24,6 +24,9 @@ frontend/build/
 .DS_Store
 Thumbs.db
 
+# .gitignore
+firebase/firebase-config.json
+
 # Editor directories and files
 .vscode/
 !.vscode/extensions.json

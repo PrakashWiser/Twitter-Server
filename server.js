@@ -11,6 +11,7 @@ import { connectDB } from "./db/connectDB.js";
 import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
+import admin from "./firebase/index.js";
 
 dotenv.config();
 
@@ -72,50 +73,45 @@ connectDB().then(() => {
 
 const onlineUsers = new Map();
 
-io.on("connection", (socket) => {
-  console.log("✅ New client connected:", socket.id);
+export const socketHandler = (io) => {
+  io.on("connection", (socket) => {
+    console.log("🔌 Connected:", socket.id);
+    socket.on("authenticate", async (token) => {
+      try {
+        const decodedUser = await admin.auth().verifyIdToken(token);
+        socket.user = decodedUser;
+        const userId = decodedUser.uid;
+        if (!onlineUsers.has(userId)) onlineUsers.set(userId, new Set());
+        onlineUsers.get(userId).add(socket.id);
+      } catch (err) {
+        console.log("Authentication failed:", err.message);
+        socket.disconnect();
+      }
+    });
 
-  socket.on("register", (userId) => {
-    if (!onlineUsers.has(userId)) {
-      onlineUsers.set(userId, new Set());
-    }
-    onlineUsers.get(userId).add(socket.id);
-    console.log("🟢 Registered:", userId, socket.id);
-  });
-
-  socket.on("send_message", (data) => {
-    const { recipientId, message, senderId } = data || {};
-    if (!recipientId || !message || !senderId) {
-      console.warn("❌ Invalid message payload:", data);
-      return;
-    }
-
-    const recipientSockets = onlineUsers.get(recipientId);
-
-    if (recipientSockets && recipientSockets.size > 0) {
+    socket.on("send_message", ({ recipientId, message, messageId }) => {
+      const sender = socket.user;
+      if (!sender) return;
+      const recipientSockets = onlineUsers.get(recipientId);
+      if (!recipientSockets) return;
       for (const sockId of recipientSockets) {
         io.to(sockId).emit("receive_message", {
-          sender: senderId,
           message,
+          sender: sender.uid,
+          messageId,
           timestamp: new Date().toISOString(),
+          status: "delivered",
         });
       }
-      console.log(`📤 Message sent to ${recipientId}`);
-    } else {
-      console.warn(`⚠️ User ${recipientId} is not online`);
-    }
-  });
+    });
 
-  socket.on("disconnect", () => {
-    console.log("❌ User disconnected:", socket.id);
-    for (const [userId, socketSet] of onlineUsers.entries()) {
-      if (socketSet.has(socket.id)) {
-        socketSet.delete(socket.id);
-        if (socketSet.size === 0) {
+    socket.on("disconnect", () => {
+      console.log("❌ Disconnected:", socket.id);
+      for (const [userId, sockets] of onlineUsers.entries()) {
+        if (sockets.delete(socket.id) && sockets.size === 0) {
           onlineUsers.delete(userId);
         }
-        break;
       }
-    }
+    });
   });
-});
+};

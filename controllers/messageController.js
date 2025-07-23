@@ -4,98 +4,64 @@ import Message from "../model/message.js";
 export const sendMessage = async (req, res) => {
   try {
     const { message, recipient } = req.body;
+    const senderId = req.user?._id;
 
-    if (
-      !message ||
-      !recipient ||
-      typeof message !== "string" ||
-      message.trim() === ""
-    ) {
-      return res.status(400).json({
-        success: false,
-        error: "Message and recipient are required",
-      });
-    }
-
-    const sender = req.user?._id;
-    if (!sender) {
-      return res.status(401).json({
-        success: false,
-        error: "Sender not authenticated",
-      });
+    if (!senderId || !recipient || !message?.trim()) {
+      return res.status(400).json({ success: false, error: "Invalid data." });
     }
 
     const recipientUser = await User.findOne({ userName: recipient });
-
     if (!recipientUser) {
-      return res.status(404).json({
-        success: false,
-        error: "Recipient not found",
-      });
+      return res
+        .status(404)
+        .json({ success: false, error: "Recipient not found." });
     }
 
-    const newMessage = new Message({
-      sender,
+    const newMessage = await Message.create({
+      sender: senderId,
       recipient: recipientUser._id,
       message,
       timestamp: new Date(),
+      status: "sent",
     });
 
-    await newMessage.save();
-    return res.status(200).json({ success: true, message: "Message sent!" });
-  } catch (error) {
-    console.error("Error sending message:", error);
-    return res.status(500).json({
-      success: false,
-      error: error.message || "Failed to send message",
-    });
+    res
+      .status(200)
+      .json({ success: true, message: "Message sent", data: newMessage });
+  } catch (err) {
+    console.error("Send message error:", err);
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 
 export const getMessageHistory = async (req, res) => {
   try {
+    const senderId = req.user?._id;
     const { recipient } = req.query;
-    if (!recipient) {
-      return res.status(400).json({
-        success: false,
-        error: "Recipient username is required",
-      });
-    }
 
-    const sender = req.user?._id; 
-    if (!sender) {
-      return res.status(401).json({
-        success: false,
-        error: "Sender not authenticated",
-      });
+    if (!senderId || !recipient) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid request." });
     }
 
     const recipientUser = await User.findOne({ userName: recipient });
-
     if (!recipientUser) {
-      return res.status(404).json({
-        success: false,
-        error: "Recipient not found",
-      });
+      return res
+        .status(404)
+        .json({ success: false, error: "Recipient not found." });
     }
 
     const messages = await Message.find({
       $or: [
-        { sender, recipient: recipientUser._id },
-        { sender: recipientUser._id, recipient: sender },
+        { sender: senderId, recipient: recipientUser._id },
+        { sender: recipientUser._id, recipient: senderId },
       ],
-    })
-      .select("message sender recipient timestamp")
-      .sort({ timestamp: 1 })
-      .exec();
+    }).sort({ timestamp: 1 });
 
-    return res.status(200).json({ success: true, messages });
-  } catch (error) {
-    console.error("Error fetching message history:", error);
-    return res.status(500).json({
-      success: false,
-      error: error.message || "Failed to fetch message history",
-    });
+    res.status(200).json({ success: true, messages });
+  } catch (err) {
+    console.error("Fetch history error:", err);
+    res.status(500).json({ success: false, error: err.message });
   }
-}; 
-
+};
