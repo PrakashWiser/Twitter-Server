@@ -8,10 +8,11 @@ import postRoute from "./routes/post.route.js";
 import messageRoute from "./routes/message.route.js";
 import notificationRoute from "./routes/notification.route.js";
 import { connectDB } from "./db/connectDB.js";
+import { socketHandler } from "./utils/socketHandler.js";
 import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
-import admin from "./firebase/index.js";
+import { Baseurl, ApiBaseurl } from "./config/config.js";
 
 dotenv.config();
 
@@ -43,6 +44,7 @@ app.use(
   })
 );
 
+const onlineUsers = new Map();
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
@@ -50,6 +52,7 @@ const io = new Server(server, {
     credentials: true,
   },
 });
+socketHandler(io, onlineUsers);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "5mb" }));
@@ -67,51 +70,7 @@ app.get("/", (req, res) => {
 
 connectDB().then(() => {
   server.listen(port, () => {
-    console.log(`✅ Server running on port ${port}`);
+    console.log(`✅ Server running on ${Baseurl}`);
+    console.log(`API available at ${ApiBaseurl}`);
   });
 });
-
-const onlineUsers = new Map();
-
-export const socketHandler = (io) => {
-  io.on("connection", (socket) => {
-    console.log("🔌 Connected:", socket.id);
-    socket.on("authenticate", async (token) => {
-      try {
-        const decodedUser = await admin.auth().verifyIdToken(token);
-        socket.user = decodedUser;
-        const userId = decodedUser.uid;
-        if (!onlineUsers.has(userId)) onlineUsers.set(userId, new Set());
-        onlineUsers.get(userId).add(socket.id);
-      } catch (err) {
-        console.log("Authentication failed:", err.message);
-        socket.disconnect();
-      }
-    });
-
-    socket.on("send_message", ({ recipientId, message, messageId }) => {
-      const sender = socket.user;
-      if (!sender) return;
-      const recipientSockets = onlineUsers.get(recipientId);
-      if (!recipientSockets) return;
-      for (const sockId of recipientSockets) {
-        io.to(sockId).emit("receive_message", {
-          message,
-          sender: sender.uid,
-          messageId,
-          timestamp: new Date().toISOString(),
-          status: "delivered",
-        });
-      }
-    });
-
-    socket.on("disconnect", () => {
-      console.log("❌ Disconnected:", socket.id);
-      for (const [userId, sockets] of onlineUsers.entries()) {
-        if (sockets.delete(socket.id) && sockets.size === 0) {
-          onlineUsers.delete(userId);
-        }
-      }
-    });
-  });
-};
