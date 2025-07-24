@@ -10,7 +10,7 @@ lerna-debug.log*
 # Dependency directories
 node_modules/
 frontend/node_modules/
-
+firebase-config.json 
 # Build output
 dist/
 dist-ssr/
@@ -25,7 +25,6 @@ frontend/build/
 Thumbs.db
 
 # .gitignore
-firebase/firebase-config.json
 
 # Editor directories and files
 .vscode/
